@@ -18,8 +18,7 @@ export COPERNICUSPASSWORD <your copernicus password>
 ```
 
 ## Running
-Edit the config.py as you need, and the:
+Edit the `config.py` as you need, and then:
 ```bash
 python download_from_copernicus.py
 ```
-
