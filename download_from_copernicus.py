@@ -50,7 +50,10 @@ if 'sea_surface_chlorophyll' in variables:
     product = 'CHL'
     day_night = 'D'
     variables.remove('sea_surface_chlorophyll')
-    variables.extend(['CHL', 'WTM', 'SENSORMASK', 'QI'])
+    if level == 'L3':
+        variables.extend(['CHL', 'WTM', 'SENSORMASK', 'QI'])
+    elif level == 'L4':
+        variables.extend(['CHL'])
 elif 'sea_surface_temperature_night' in variables:
     product = 'SST'
     day_night = 'N'

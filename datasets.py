@@ -8,7 +8,8 @@ services = {
                     'spatial_resolution': '1km',
                 },
                 'L4': {
-                    'id': '',
+                    'id': 'OCEANCOLOUR_MED_CHL_L4_NRT_OBSERVATIONS_009_041-TDS',
+                    'spatial_resolution': '1km',
                 },
             },
             'SST': {
@@ -45,6 +46,9 @@ products = {
                 'L3': {
                     'id': 'dataset-oc-med-chl-multi-l3-chl_1km_daily-rt-v02',
                 },
+                'L4': {
+                    'id': 'dataset-oc-med-chl-multi-l4-interp_1km_daily-rt-v02',
+                }
             },
             'SST': {
                 'L3': {
