@@ -3,11 +3,10 @@ from collections import namedtuple
 Region = namedtuple('Region', 'name lat lon')
 regions = [
     Region(name='MED', lat=(30, 45.99854660342), lon=(-6, 36.500480651855)),
-    Region(name='EUR', lat=(20, 70), lon=(-40, 55)),
 ]
 
 
-def from_coordinates(lat, lon):
+def from_coordinates(lon, lat):
     if not lat['min'] < lat['max']:
         lat['min'], lat['max'] = lat['max'], lat['min']
 
