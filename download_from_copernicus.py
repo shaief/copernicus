@@ -5,8 +5,12 @@ import ast
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
+import logging
+import logging.handlers
 import os
 import subprocess
+import sys
+import traceback
 
 from tqdm import tqdm
 
@@ -22,9 +26,13 @@ from config import (
 )
 from datasets import services, products
 import get_region
+from regions import REGIONS
+
+
 
 Input = namedtuple(
-    "Input", ["dates", "variable", "level", "lons", "lats", "output_dir", "verbosity"]
+    "Input",
+    ["dates", "variable", "level", "region", "lons", "lats", "output_dir", "verbosity"],
 )
 
 try:
@@ -70,7 +78,7 @@ def organize_inputs(user_input):
     delta = end - start
 
     variables = user_input.variable
-    if set.intersection({"sea_surface_chlorophyll", "chl"}, variables):
+    if set.intersection({"sea_surface_chlorophyll", "chl", "CHL"}, variables):
         product = "CHL"
         day_night = "D"
         if user_input.level == "L3":
@@ -107,6 +115,7 @@ def organize_inputs(user_input):
         "product": product,
         "day_night": day_night,
         "variables": variables,
+        "output_dir": user_input.output_dir,
     }
 
 
@@ -122,19 +131,12 @@ def download(date, params, verbosity):
     service_id = service["id"]
     spatial_resolution = service["spatial_resolution"]
     product_id = products[temporal][region][product][level]["id"]
-
-    output_file = "COP_{}_{}_{}_{}_{}_{}_{}_{}_{}_{}.nc".format(
-        level,
-        product,
-        day_night,
-        spatial_resolution,
-        temporal,
-        lon[0],
-        lon[1],
-        lat[0],
-        lat[1],
-        date,
-    )
+    output_directory = params['output_dir']
+    if params["region"].lower() == "med":
+        output_directory = os.path.join(output_directory, service_id)
+        if not os.path.exists(output_directory):
+            os.makedirs(output_directory)
+        output_file = "{}_{}.nc".format(product_id, date)
 
     # print(output_file)
 
@@ -183,7 +185,10 @@ def download(date, params, verbosity):
     subprocess.call(cmd)
 
 
-def parse_user_input(lons, lats):
+def parse_user_input():
+    lons = str([lon["min"], lon["max"]])
+    lats = str([lat["min"], lat["max"]])
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--start", type=str, help="yyyy-mm-dd", nargs="?", default=start_date
@@ -198,6 +203,7 @@ def parse_user_input(lons, lats):
     parser.add_argument("--level", type=str, help="L3/L4", nargs="?", default=level)
     parser.add_argument("--lon", type=str, help="[min, max]", nargs="?", default=lons)
     parser.add_argument("--lat", type=str, help="[min, max]", nargs="?", default=lats)
+    parser.add_argument("--region", type=str, help="MED/EASTMED", nargs="?", default="")
     parser.add_argument(
         "--output",
         type=str,
@@ -216,49 +222,89 @@ def parse_user_input(lons, lats):
     var = [args.var] if type(args.var) != list else args.var
     # temporal = args.temporal
     processing_level = args.level
-    lons = ast.literal_eval(args.lon)
-    lats = ast.literal_eval(args.lat)
-    if not (type(lons) == list and type(lats) == list):
-        print("Lat/Lon should be a list of this format: [min,max]")
-    elif not (len(lons) == 2 and len(lats) == 2):
-        print("Lat/Lon should be a list of this format: [min,max]")
+    if args.region:
+        coordinates = REGIONS.get(args.region)
+        if not coordinates:
+            msg = "The region {} wasn't defined\n available regions are: {}".format(
+                args.region, REGIONS.keys()
+            )
+            print(msg)
+            raise ValueError(msg)
+        lon_ = coordinates["lon"]
+        lat_ = coordinates["lat"]
+        args.lon = str([lon_["min"], lon_["max"]])
+        args.lat = str([lat_["min"], lat_["max"]])
+    try:
+        lons = ast.literal_eval(args.lon)
+        lats = ast.literal_eval(args.lat)
+        if not (len(lons) == 2 and len(lats) == 2):
+            raise ValueError
+    except (ValueError, TypeError, SyntaxError) as e:
+        msg = "Lat/Lon should be a list of this format: [min,max]"
+        print(msg)
+        raise ValueError(msg)
+
 
     output_dir = args.output
     verbosity = args.verbosity
-    return Input(dates, var, processing_level, lons, lats, output_dir, verbosity)
+    return Input(
+        dates, var, processing_level, args.region, lons, lats, output_dir, verbosity
+    )
+
+def set_logger():
+    logger = logging.getLogger('copernicus_logger')
+    # handler = logging.handlers.SysLogHandler(address='/dev/log', facility=logging.handlers.SysLogHandler.LOG_DAEMON)
+    file_handler = logging.handlers.WatchedFileHandler(os.environ.get("LOGFILE", "/var/log/copernicus.log"))
+    file_handler.setLevel(logging.ERROR)
+    # create console handler with a higher log level
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - [%(levelname)s] (pid=%(process)d) %(module)s(%(lineno)d): %(message)s')
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+    # add the handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+
+    def exceptions_handler(exception_type, value, tb):
+        logger.exception("Uncaught exception: {}".format(str(value)))
+
+        for line in traceback.format_tb(tb, 10):
+            logger.error(line)
+
+    # set exception handler
+    sys.excepthook = exceptions_handler
+
+    return logger
 
 
 def main():
-    lons = str([lon["min"], lon["max"]])
-    lats = str([lat["min"], lat["max"]])
+    logger = set_logger()
 
-    user_input = parse_user_input(lons, lats)
+    try:
+        user_input = parse_user_input()
+    except ValueError:
+        sys.exit()
     organized_inputs = organize_inputs(user_input)
 
     start = organized_inputs["start"]
     delta = organized_inputs["delta"]
 
-    msg = """
-    Downloading the following data:
-    {} days between {} --> {} of {} {} data in the area of:
-    Longitudes: {} --> {}
-    Latitudes: {} --> {}
-    to directory: {}
-    """
-    print(
-        msg.format(
-            delta.days + 1,
-            user_input.dates[0],
-            user_input.dates[1],
-            user_input.variable,
-            user_input.level,
-            user_input.lons[0],
-            user_input.lons[1],
-            user_input.lats[0],
-            user_input.lats[1],
-            user_input.output_dir,
-        )
+    msg = "Downloading the following data:\n"
+    msg += "{} days between {} --> {} of {} {} data in the area of {}:\n".format(
+        delta.days + 1,
+        user_input.dates[0],
+        user_input.dates[1],
+        user_input.variable,
+        user_input.level,
+        user_input.region,
     )
+    msg += "Longitudes: {} --> {}\n".format(user_input.lons[0], user_input.lons[1])
+    msg += "Latitudes: {} --> {}\n".format(user_input.lats[0], user_input.lats[1])
+    msg += "to directory: {}".format(user_input.output_dir)
+    logger.info(msg)
+
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         future_list = []
