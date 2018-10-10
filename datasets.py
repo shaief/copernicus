@@ -3,19 +3,33 @@ services = {
         'MED': {
             'CHL': {
                 'L3': {
-                    'id':
-                    'OCEANCOLOUR_MED_CHL_L3_NRT_OBSERVATIONS_009_040-TDS',
-                    'spatial_resolution': '1km',
+                    'NRT': {
+                        'id': 'OCEANCOLOUR_MED_CHL_L3_NRT_OBSERVATIONS_009_040-TDS',
+                        'spatial_resolution': '1km',
+                        },
+                    'REP': {
+                        'id': 'OCEANCOLOUR_MED_CHL_L3_REP_OBSERVATIONS_009_073-TDS',
+                        'spatial_resolution': '1km',
+                        },
+                    }
                 },
                 'L4': {
-                    'id': 'OCEANCOLOUR_MED_CHL_L4_NRT_OBSERVATIONS_009_041-TDS',
-                    'spatial_resolution': '1km',
+                    'NRT': {
+                        'id': 'OCEANCOLOUR_MED_CHL_L4_NRT_OBSERVATIONS_009_041-TDS',
+                        'spatial_resolution': '1km',
+                        },
+                    'REP': {
+                        'id': 'OCEANCOLOUR_MED_CHL_L4_REP_OBSERVATIONS_009_078-TDS',
+                        'spatial_resolution': '1km',
+                    },
                 },
             },
             'SST': {
                 'L3': {
-                    'id': 'SST_MED_SST_L3S_NRT_OBSERVATIONS_010_012-TDS',
-                    'spatial_resolution': '0.063deg',
+                    'NRT': {
+                        'id': 'SST_MED_SST_L3S_NRT_OBSERVATIONS_010_012-TDS',
+                        'spatial_resolution': '0.063deg',
+                        },
                 },
             },
             'SSH': {
@@ -25,7 +39,6 @@ services = {
                 },
             },
         },
-    },
     '8days': {
         'MED': {
             'CHL': {
@@ -44,10 +57,21 @@ products = {
         'MED': {
             'CHL': {
                 'L3': {
-                    'id': 'dataset-oc-med-chl-multi-l3-chl_1km_daily-rt-v02',
+                    'NRT': {
+                        'id': 'dataset-oc-med-chl-multi-l3-chl_1km_daily-rt-v02',
+                        },
+                    'REP': {
+                        'id': 'dataset-oc-med-chl-multi_cci-l3-chl_1km_daily-rep-v02',
+                        },
+                    }
                 },
                 'L4': {
-                    'id': 'dataset-oc-med-chl-multi-l4-interp_1km_daily-rt-v02',
+                    'NRT': {
+                        'id': 'dataset-oc-med-chl-multi-l4-interp_1km_daily-rt-v02',
+                        },
+                    'REP': {
+                        'id': ''
+                    },
                 }
             },
             'SST': {
@@ -61,5 +85,4 @@ products = {
                 },
             },
         },
-    },
-}
+    }

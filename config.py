@@ -9,9 +9,10 @@ end_date = '2018-03-31'
 
 variables = ['sea_surface_velocities']
 temporal = 'daily'
-level = 'L4'
+level = 'L3'
+processing = 'REP'
 
-region = 'EASTMED'
+region = 'MED'
 
 if region:
     coordinates = REGIONS[region]

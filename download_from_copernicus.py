@@ -20,6 +20,7 @@ from config import (
     variables,
     temporal,
     level,
+    processing,
     lon,
     lat,
     output_directory,
@@ -32,7 +33,7 @@ from regions import REGIONS
 
 Input = namedtuple(
     "Input",
-    ["dates", "variable", "level", "region", "lons", "lats", "output_dir", "verbosity"],
+    ["dates", "variable", "level", "type", "region", "lons", "lats", "output_dir", "verbosity"],
 )
 
 try:
@@ -69,8 +70,8 @@ except KeyError:
     """
     )
 
-MOTU = "http://nrt.cmems-du.eu/motu-web/Motu"
-
+MOTUNRT = "http://nrt.cmems-du.eu/motu-web/Motu"
+MOTUREP = "http://my.cmems-du.eu/motu-web/Motu"
 
 def organize_inputs(user_input):
     start = datetime.datetime.strptime(user_input.dates[0], "%Y-%m-%d").date()
@@ -82,7 +83,10 @@ def organize_inputs(user_input):
         product = "CHL"
         day_night = "D"
         if user_input.level == "L3":
-            variables = ["CHL", "WTM", "SENSORMASK", "QI"]
+            if user_input.type == "NRT":
+                variables = ["CHL", "WTM", "SENSORMASK", "QI"]
+            elif user_input.type == "REP":
+                variables = ["CHL", "WTM"]
         elif user_input.level == "L4":
             variables = ["CHL"]
     elif set.intersection({"sea_surface_temperature_night", "sst_night"}, variables):
@@ -104,12 +108,20 @@ def organize_inputs(user_input):
         raise ValueError("Missing variable")
 
     region = get_region.from_coordinates(lon, lat)
+
+    if user_input.type == 'NRT':
+        motu = MOTUNRT
+    elif user_input.type == 'REP':
+        motu = MOTUREP
+
     return {
+        "motu": motu,
         "start": start,
         "delta": delta,
         "lons": user_input.lons,
         "lats": user_input.lats,
         "level": user_input.level,
+        "type": user_input.type,
         "temporal": temporal,
         "region": region,
         "product": product,
@@ -124,13 +136,15 @@ def download(date, params, verbosity):
     product = params["product"]
     variables = params["variables"]
     level = params["level"]
+    processing_type = params["type"]
     day_night = params["day_night"]
     lon = params["lons"]
     lat = params["lats"]
-    service = services[temporal][region][product][level]
+    motu = params["motu"]
+    service = services[temporal][region][product][level][processing_type]
     service_id = service["id"]
     spatial_resolution = service["spatial_resolution"]
-    product_id = products[temporal][region][product][level]["id"]
+    product_id = products[temporal][region][product][level][processing_type]["id"]
     output_directory = params['output_dir']
     if params["region"].lower() == "med":
         output_directory = os.path.join(output_directory, service_id)
@@ -154,7 +168,7 @@ def download(date, params, verbosity):
         "--pwd",
         COPERNICUSPASSWORD,
         "--motu",
-        MOTU,
+        motu,
         "--service-id",
         service_id,
         "--product-id",
@@ -204,6 +218,7 @@ def parse_user_input():
     parser.add_argument("--lon", type=str, help="[min, max]", nargs="?", default=lons)
     parser.add_argument("--lat", type=str, help="[min, max]", nargs="?", default=lats)
     parser.add_argument("--region", type=str, help="MED/EASTMED", nargs="?", default="")
+    parser.add_argument("--type", type=str, help="Dataset processing type: Near Real Time (NRT) vs Reprocessed (REP) []NRT/REP]", nargs="?", default=processing)
     parser.add_argument(
         "--output",
         type=str,
@@ -222,6 +237,7 @@ def parse_user_input():
     var = [args.var] if type(args.var) != list else args.var
     # temporal = args.temporal
     processing_level = args.level
+    processing_type = args.type
     if args.region:
         coordinates = REGIONS.get(args.region)
         if not coordinates:
@@ -248,7 +264,7 @@ def parse_user_input():
     output_dir = args.output
     verbosity = args.verbosity
     return Input(
-        dates, var, processing_level, args.region, lons, lats, output_dir, verbosity
+        dates, var, processing_level, processing_type, args.region, lons, lats, output_dir, verbosity
     )
 
 def set_logger():
