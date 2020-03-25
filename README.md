@@ -9,7 +9,7 @@ The main goal of this project is to make downloading data straight forward by ov
 * Make sure you have Python 2.7 installed (yes, that's very unfortunate but the motu client doesn't support Python 3).
 * Install the [motu client](https://github.com/clstoulouse/motu-client-python):
 ```bash
-pip install motu-client
+pip install motuclient
 ```
 * Add your Copernicus credentials to your environment variables:
 ```bash

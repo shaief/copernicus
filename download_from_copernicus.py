@@ -162,7 +162,7 @@ def download(date, params, verbosity):
     cmd = [
         "python",
         "-m",
-        "motu-client",
+        "motuclient",
         "--user",
         COPERNICUSUSERNAME,
         "--pwd",
